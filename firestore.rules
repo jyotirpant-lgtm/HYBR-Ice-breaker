@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidSession(data) {
+      return data.status in ['lobby', 'question', 'locked', 'finished', 'closed'] &&
+        data.currentQuestionIndex is int &&
+        data.currentQuestionIndex >= 0 &&
+        data.currentQuestionIndex <= 15 &&
+        data.durationSeconds is int &&
+        data.durationSeconds > 0 &&
+        data.hostUid is string;
+    }
+
+    function isValidParticipant(data) {
+      return data.name is string &&
+        data.name.size() >= 1 &&
+        data.name.size() <= 60;
+    }
+
+    function isValidResponse(data) {
+      return data.participantId is string &&
+        data.participantName is string &&
+        data.participantName.size() >= 1 &&
+        data.participantName.size() <= 60 &&
+        data.questionIndex is int &&
+        data.questionIndex >= 0 &&
+        data.questionIndex < 15 &&
+        data.questionText is string &&
+        data.questionText.size() <= 300 &&
+        data.rankedOptions is list &&
+        data.rankedOptions.size() == 4;
+    }
+
+    // Sessions root collection
+    match /sessions/{code} {
+      allow get: if isValidId(code);
+      allow list: if false;
+
+      // Host can create a session
+      allow create: if isValidId(code) && isValidSession(incoming());
+
+      // Update session states (advancing, pausing, locking, ending, closing)
+      allow update: if isValidId(code);
+      allow delete: if isValidId(code);
+
+      // Participants subcollection
+      match /participants/{uid} {
+        allow get, list: if true;
+        allow create: if isValidId(uid) && isValidParticipant(incoming());
+        allow update: if isValidId(uid);
+        allow delete: if isValidId(uid);
+      }
+
+      // Responses subcollection: private rankings per participant per question
+      match /responses/{responseId} {
+        allow get, list: if true;
+
+        // Creation of ranking response during active question
+        allow create: if isValidId(responseId) &&
+          isValidResponse(incoming()) &&
+          exists(/databases/$(database)/documents/sessions/$(code)) &&
+          get(/databases/$(database)/documents/sessions/$(code)).data.status == 'question' &&
+          get(/databases/$(database)/documents/sessions/$(code)).data.currentQuestionIndex == incoming().questionIndex;
+
+        // One response per question - NO EDITS AFTER SUBMIT
+        allow update: if false;
+        // Host can delete responses when wiping previous session
+        allow delete: if isValidId(responseId);
+      }
+    }
+  }
+}

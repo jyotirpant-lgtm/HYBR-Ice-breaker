@@ -1,0 +1,129 @@
+{
+  "entities": {
+    "Session": {
+      "title": "Session",
+      "description": "Live preference polling game session running on stage host and joined by participants",
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["lobby", "question", "locked", "finished"],
+          "description": "Current lifecycle status of the session"
+        },
+        "currentQuestionIndex": {
+          "type": "number",
+          "description": "0-based index of the currently active question (0 to 14)"
+        },
+        "questionStartedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the current question was started"
+        },
+        "durationSeconds": {
+          "type": "number",
+          "description": "Duration allotted for each question in seconds (30)"
+        },
+        "isPaused": {
+          "type": "boolean",
+          "description": "Whether the timer is paused by the host"
+        },
+        "pausedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when paused"
+        },
+        "remainingSecondsOnPause": {
+          "type": "number",
+          "description": "Remaining countdown seconds when paused"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the session was created"
+        },
+        "hostUid": {
+          "type": "string",
+          "description": "UID of the session host controller"
+        }
+      },
+      "required": ["status", "currentQuestionIndex", "durationSeconds", "createdAt"]
+    },
+    "Participant": {
+      "title": "Participant",
+      "description": "A player who joined the session via phone",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60,
+          "description": "Participant display name shown on stage lobby"
+        },
+        "joinedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when participant joined"
+        },
+        "hypeCount": {
+          "type": "number",
+          "description": "Count of reactions/cheers sent"
+        }
+      },
+      "required": ["name", "joinedAt"]
+    },
+    "Response": {
+      "title": "Response",
+      "description": "A participant's 4-option ranking for a specific question",
+      "type": "object",
+      "properties": {
+        "participantId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "UID of the respondent participant"
+        },
+        "participantName": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Name of the participant at time of ranking"
+        },
+        "questionIndex": {
+          "type": "number",
+          "description": "0-based index of the question answered"
+        },
+        "questionText": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Full text of the question"
+        },
+        "rankedOptions": {
+          "type": "array",
+          "description": "Array of 4 option IDs ['A','B','C','D'] ordered 1st to 4th preference"
+        },
+        "submittedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of submission"
+        },
+        "secondsToSubmit": {
+          "type": "number",
+          "description": "Seconds taken from question start until submit"
+        }
+      },
+      "required": ["participantId", "participantName", "questionIndex", "questionText", "rankedOptions", "submittedAt"]
+    }
+  },
+  "firestore": {
+    "/sessions/{code}": {
+      "schema": "Session",
+      "description": "Main room session document keyed by 6-digit session PIN"
+    },
+    "/sessions/{code}/participants/{uid}": {
+      "schema": "Participant",
+      "description": "Connected participants in the session"
+    },
+    "/sessions/{code}/responses/{responseId}": {
+      "schema": "Response",
+      "description": "Private rankings submitted per question per participant"
+    }
+  }
+}

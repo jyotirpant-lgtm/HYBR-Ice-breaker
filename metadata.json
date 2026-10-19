@@ -1,0 +1,7 @@
+{
+  "name": "HYBR Live Polling",
+  "description": "Live preference-polling game for company events with real-time mobile ranking and synchronized stage projection.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
